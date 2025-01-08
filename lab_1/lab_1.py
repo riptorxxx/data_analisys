@@ -5,7 +5,7 @@ import numpy as np
 #  _______________ Part 1 ________________
 
 # Save dataset in variable
-data = pd.read_csv('../airpollution.csv')
+data = pd.read_csv('airpollution.csv')
 
 print(f"\nПервые 10 строк датасета:\n{data.head(10)}")
 print(f"\nИнформация о датасете:")
