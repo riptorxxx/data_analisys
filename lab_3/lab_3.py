@@ -13,6 +13,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from io import BytesIO
 
 
+# Запуск через команду в консоли `uvicorn lab_3:app --reload`
 app = FastAPI()
 
 
