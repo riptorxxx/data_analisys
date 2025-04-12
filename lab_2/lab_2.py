@@ -1,3 +1,7 @@
+"""
+https://github.com/riptorxxx/data_analisys/tree/main
+"""
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 import pandas as pd
