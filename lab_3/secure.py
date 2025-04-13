@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from lab_3.config import MAX_FILE_SIZE, ALLOWED_COLUMNS
+from logger import logger
 
 
 class DataValidator(ABC):
@@ -46,25 +47,28 @@ class SecureCSVValidator(DataValidator):
         self._check_binary_data(contents)
         await self._validate_mime_type(contents, file.filename)
         df = self._parse_csv(contents)
+
         if df.empty:
             raise HTTPException(400, "No valid data found in CSV file")
+
         self._check_csv_injection(df)
         self._validate_structure(df)
         self._validate_content(df)
+
         df = self.security_processor.encrypt_column(df)
         df = self.security_processor.hash_price(df)
 
         # Проверка шифрования
         encrypted_samples = df[['RAM_Size', 'RAM_encrypted']].head().to_dict()
-        print("Encrypted samples:", encrypted_samples)
+        logger.info("Encrypted samples: %s", encrypted_samples)
 
         # Проверка дешифровки
         decrypted_samples = self.security_processor.decrypt_sample(df)
-        print("Decrypted samples:", decrypted_samples)
+        logger.info("Decrypted samples: %s", decrypted_samples)
 
         # Проверка хеширования
         hash_samples = df[['Price', 'Price_hash']].head().to_dict()
-        print("Hash samples:", hash_samples)
+        logger.info("Hash samples: %s", hash_samples)
 
         return df
 
@@ -270,14 +274,17 @@ class DataSecurityProcessor:
     def __init__(self):
         self.crypto_key = Fernet.generate_key()                         # генерация ключа
         self.cipher = Fernet(self.crypto_key)                           # Инициализируем шифровальщик
-        self.salt = b'da chtob tbi zadolbalsya eto vzlambivatb'         # Соль для хеширования (должна быть постоянной)
+        self.salt = b'da_chtob_tbi_zadolbalsya_eto_vzlambivatb'         # Соль для хеширования (должна быть постоянной)
+        logger.debug("Initialized DataSecurityProcessor")
 
     def encrypt_column(self, df: pd.DataFrame) -> pd.DataFrame:
         """Шифрование колонки RAM_Size и создание колонки RAM_encrypted"""
         if 'RAM_Size' in df.columns:
+            logger.info("Encrypting RAM_Size column")
             df['RAM_encrypted'] = df['RAM_Size'].apply(
                 lambda x: self.cipher.encrypt(str(x).encode()).decode()
             )
+            logger.debug(f"Encryption samples: {df[['RAM_Size', 'RAM_encrypted']].head().to_dict()}")
         return df
 
     def decrypt_sample(self, df: pd.DataFrame, n: int = 5) -> dict:

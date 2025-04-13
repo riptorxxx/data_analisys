@@ -18,3 +18,7 @@ ALLOWED_COLUMNS = ['Brand',
                    'Weight',
                    'Price'
                    ]
+
+# Настройки логирования
+LOG_FILE = BASE_DIR / 'app.log'
+LOG_LEVEL = 'INFO'

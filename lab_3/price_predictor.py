@@ -12,10 +12,10 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 from xgboost import XGBRegressor
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from io import BytesIO
 
 from config import DATA_FILE, MODEL_FILE
 from secure import SecureCSVValidator
+from logger import logger
 
 
 # Запуск через команду в консоли `uvicorn lab_3:app --reload`
@@ -81,7 +81,7 @@ class LaptopPricePredictor:
         """Оценка качества модели"""
         y_pred = self.model.predict(x_test)
         mse = mean_squared_error(y_test, y_pred)
-        print(f"Test MSE: {mse}")
+        logger.info(f"Test MSE: {mse}")
         return mse
 
     def save_model(self, model_path: str):
@@ -118,7 +118,12 @@ class LaptopPricePredictor:
 
 # Инициализация модели при старте приложения
 predictor = LaptopPricePredictor()
-predictor.load_data_and_train_model()
+
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Loading and training model...")
+    predictor.load_data_and_train_model()
 
 
 @app.post("/predict")
@@ -126,29 +131,36 @@ async def predict_price(file: UploadFile = File(...)):
     """
     Эндпоинт для предсказания цен на ноутбуки
 
-    Принимает CSV файл с характеристиками ноутбуков,
-    возвращает предсказанные цены
+    Принимает CSV файл с характеристиками ноутбуков, валидные столбцы:
+     ALLOWED_COLUMNS = ['Brand',
+                   'Processor_Speed',
+                   'RAM_Size',
+                   'Storage_Capacity',
+                   'Screen_Size',
+                   'Weight',
+                   'Price'
+                   ]
+
+    Возвращает предсказанные цены
     """
     try:
-        # Валидация файла
+        # Валидация + автоматическое шифрование/хеширование
+        logger.info(f"Received file: {file.filename}")
         validator = SecureCSVValidator()
         validated_data = await validator.validate_upload(file)
 
-        # Шифрование данных
-        encrypted_data = validator.security_processor.encrypt_column(validated_data)
-
-        # Предсказание
-        predictions = predictor.predict(encrypted_data)
-
-        # Демонстрация расшифровки
-        decrypted_samples = validator.security_processor.decrypt_sample(encrypted_data)
-        print("Decrypted samples:", decrypted_samples)
+        # Предсказание (на уже зашифрованных данных)
+        predictions = predictor.predict(validated_data)
+        logger.info(f"Successfully predicted prices for {len(predictions)} laptops")
 
         return {"predictions": predictions.tolist()}
+
     except HTTPException as he:
+        logger.error(f"Validation error: {he.detail}")
         raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        logger.exception(f"Server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 
 # # Загрузка данных и обучение модели
