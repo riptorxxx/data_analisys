@@ -1,9 +1,8 @@
 import os.path
-from typing import Tuple, List
-
 import pandas as pd
 import joblib
 
+from typing import Tuple, List
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline

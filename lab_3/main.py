@@ -1,4 +1,3 @@
-from price_predictor import app
 from logger import logger
 
 
